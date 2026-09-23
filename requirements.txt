@@ -1,0 +1,4 @@
+web3>=7,<9        # contract.encode_abi() is the v7+ name
+requests>=2.31
+python-dotenv>=1.0
+curl_cffi>=0.7   # browser-TLS-fingerprint transport for SafeTrade (Cloudflare JA3 gate)

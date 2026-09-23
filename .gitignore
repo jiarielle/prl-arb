@@ -1,0 +1,30 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# node
+node_modules/
+
+# runtime state / logs / backups
+logs/
+*.log
+state.json
+*.bak
+*.bak.*
+
+# vendored binaries
+xray-bin/
+
+# runtime observer output
+*.jsonl
+*.out
+
+# private PnL baseline (copy baseline.json.example -> baseline.json)
+baseline.json

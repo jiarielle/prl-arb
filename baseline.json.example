@@ -1,0 +1,5 @@
+{
+  "note": "Starting inventory baseline, set once after the first funding. True PnL = current total assets (incl. in-flight) - this baseline. Do not edit unless you add/withdraw principal.",
+  "start_token": 0,
+  "start_usdt": 0
+}
