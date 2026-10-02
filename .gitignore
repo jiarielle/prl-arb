@@ -28,3 +28,9 @@ xray-bin/
 
 # private PnL baseline (copy baseline.json.example -> baseline.json)
 baseline.json
+
+# dashboard runtime config (feishu webhook etc.)
+dashboard.json
+
+# kill switch
+.STOP

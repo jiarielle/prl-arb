@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRL·ARB 控制台</title>
+<style>
+  :root{
+    --abyss:#0a1418; --panel:#101f24; --panel-2:#122128; --panel-deep:#0d1a1f;
+    --hairline:#1e353c; --hairline-soft:rgba(30,53,60,.6);
+    --nacre:#e6edea; --muted:#7c949a; --faint:#4d636a;
+    --gold:#e3c36b; --gold-bright:#f2d98a; --gold-dim:#8a7a45;
+    --green:#7fbf95; --red:#e07a6b; --sea:#7fb3c8;
+    --mono:"SF Mono","Menlo",monospace;
+    --sans:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--abyss)}
+  body{font-family:var(--sans);color:var(--nacre);font-size:14px;line-height:1.55;
+    background:
+      radial-gradient(1100px 480px at 72% -8%, rgba(227,195,107,.055), transparent 60%),
+      radial-gradient(900px 420px at 8% -6%, rgba(127,179,200,.045), transparent 60%),
+      var(--abyss);
+    background-attachment:fixed;
+    min-height:100vh}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  button{font-family:var(--sans);cursor:pointer;border-radius:4px;font-size:12px;padding:5px 11px;
+    background:rgba(18,33,40,.7);color:var(--nacre);border:1px solid var(--hairline);
+    transition:border-color .15s, background .15s}
+  button:hover{border-color:var(--muted)}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+  button.danger{border-color:rgba(224,122,107,.55);color:var(--red)}
+  button.danger:hover{background:rgba(224,122,107,.14);border-color:var(--red)}
+  button.gold{border-color:var(--gold-dim);color:var(--gold-bright);background:rgba(227,195,107,.09)}
+  button.gold:hover{background:rgba(227,195,107,.16);border-color:var(--gold)}
+  button:disabled{opacity:.45;cursor:default}
+  input[type=text],input[type=password]{background:var(--panel-deep);border:1px solid var(--hairline);
+    color:var(--nacre);border-radius:4px;padding:6px 9px;font-family:var(--mono);font-size:13px;width:100%;
+    min-width:0}
+  input::placeholder{color:var(--faint)}
+  label.ck-line{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0;cursor:pointer}
+  input[type=checkbox]{accent-color:var(--gold-dim)}
+
+  /* ===== 顶部 ===== */
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;
+    padding:10px 22px;border-bottom:1px solid var(--hairline);flex-wrap:wrap;
+    background:rgba(10,20,24,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .brand{display:flex;align-items:center;gap:9px;white-space:nowrap}
+  .brand .pearl{width:11px;height:11px;border-radius:50%;
+    background:radial-gradient(circle at 35% 28%,#fff8dd 0%,var(--gold) 48%,#8a6f33 100%);
+    box-shadow:0 0 10px rgba(227,195,107,.55), inset 0 -1px 2px rgba(0,0,0,.35)}
+  .brand b{font-weight:600;letter-spacing:.6px}
+  .brand span{color:var(--muted);font-size:12px}
+  .tb-item{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+  .tb-item .lab{color:var(--muted);font-size:12px}
+  .tb-sep{width:1px;height:18px;background:var(--hairline)}
+  .chip{font-family:var(--mono);font-size:12px;padding:2px 9px;border-radius:4px;border:1px solid var(--hairline);white-space:nowrap}
+  .chip.live{border-color:var(--gold);color:var(--gold-bright);background:rgba(227,195,107,.08)}
+  .chip.dry{color:var(--muted)}
+  .edge-chip.hot{border-color:var(--gold);color:var(--gold-bright);background:rgba(227,195,107,.1)}
+  @media (prefers-reduced-motion:no-preference){
+    .edge-chip.hot{animation:breathe 1.6s ease-in-out infinite}
+    @keyframes breathe{50%{box-shadow:0 0 12px rgba(227,195,107,.4)}}
+    .dot.on{animation:pulse 2.2s ease-in-out infinite}
+    @keyframes pulse{50%{box-shadow:0 0 6px rgba(127,191,149,.6)}}
+    .toast-item{animation:slidein .25s ease-out}
+    @keyframes slidein{from{transform:translateX(16px);opacity:0}}
+  }
+  #halt-btn{font-size:13px;padding:6px 16px;font-weight:600}
+  #clock{margin-left:auto;color:var(--muted);font-size:13px}
+
+  main{max-width:1320px;margin:0 auto;padding:18px 22px 60px}
+
+  .halt-banner{margin-bottom:16px;padding:12px 16px;border-left:3px solid var(--red);border-radius:0 4px 4px 0;
+    background:linear-gradient(90deg,rgba(224,122,107,.1),transparent 70%);display:flex;align-items:center;gap:14px}
+  .halt-banner.bridge{border-left-color:var(--gold)}
+  .halt-banner b{color:var(--red)} .halt-banner.bridge b{color:var(--gold)}
+  .halt-banner p{color:var(--muted);font-size:13px;font-family:var(--mono);word-break:break-all;flex:1}
+
+  /* ===== 行网格：主区 2:1，设置区 3 等宽 ===== */
+  .grid-a{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+  .grid-set{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px}
+  @media(max-width:1120px){
+    .grid-a{grid-template-columns:1fr}
+    .grid-set{grid-template-columns:1fr}
+  }
+
+  section.panel{background:linear-gradient(180deg,var(--panel),var(--panel-deep));
+    border:1px solid var(--hairline);border-radius:6px;padding:15px 17px;margin-bottom:16px;
+    box-shadow:inset 0 1px 0 rgba(230,237,234,.025)}
+  .grid-a>section.panel,.grid-set>section.panel{margin-bottom:0}
+  .panel h2{font-size:13px;font-weight:600;letter-spacing:.3px;
+    padding-bottom:9px;border-bottom:1px solid var(--hairline-soft);margin-bottom:12px;
+    display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .panel h2 .sub{color:var(--faint);font-size:11px;font-weight:400;letter-spacing:0}
+  .panel h2 + h2{margin-top:18px}
+
+  /* ===== 实时行情 ===== */
+  .live-strip{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:14px;margin-bottom:16px}
+  @media(max-width:980px){.live-strip{grid-template-columns:1fr}}
+  .live-cell{background:linear-gradient(180deg,var(--panel),var(--panel-deep));
+    border:1px solid var(--hairline);border-radius:6px;padding:14px 16px;
+    box-shadow:inset 0 1px 0 rgba(230,237,234,.03)}
+  .live-cell .src{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .live-cell .src .conn{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .live-cell .pxs{display:flex;gap:22px;margin-top:8px;align-items:baseline}
+  .live-cell .big{font-family:var(--mono);font-size:26px;font-weight:500;letter-spacing:.5px}
+  .live-cell .big .arr{font-size:14px;margin-left:2px}
+  .live-cell .sub{font-size:11px;color:var(--faint);margin-top:1px}
+  .live-cell .err{color:var(--red);font-size:11px;margin-top:8px;font-family:var(--mono)}
+  .delta-1h{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:6px}
+  .prem-big{font-family:var(--mono);font-size:32px;line-height:1.15;margin-top:2px;font-weight:500}
+  .prem-row{display:flex;gap:22px;align-items:flex-start;margin-top:6px}
+  .prem-item{min-width:140px}
+  .prem-item .lab{font-size:11px;color:var(--muted)}
+  .gauge{position:relative;height:7px;border-radius:4px;margin-top:14px;
+    background:linear-gradient(90deg,rgba(224,122,107,.28),rgba(77,99,106,.18) 42%,rgba(77,99,106,.18) 58%,rgba(227,195,107,.34));overflow:visible}
+  .gauge .zero{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint)}
+  .gauge .th{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px dashed rgba(227,195,107,.6)}
+  .gauge .mk{position:absolute;top:-3px;height:13px;width:5px;border-radius:2px;transform:translateX(-50%);transition:left .5s}
+  .gauge-lab{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:5px}
+
+  /* ===== 进程控制 ===== */
+  .procctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+    background:linear-gradient(180deg,var(--panel),var(--panel-deep));
+    border:1px solid var(--hairline);border-radius:6px;padding:11px 16px;margin-bottom:16px}
+  .pc{display:flex;align-items:center;gap:8px;padding-right:14px;border-right:1px solid var(--hairline-soft)}
+  .pc:last-of-type{border-right:none}
+  .pc .nm{font-size:13px}
+  .pc .st{font-size:11px;color:var(--faint);width:24px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--red);flex:none}
+  .dot.on{background:var(--green)}
+
+  .chart-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .legend i{width:14px;height:2px;display:inline-block;vertical-align:middle;margin-right:5px;border-radius:1px}
+  #chart{width:100%;height:300px;display:block}
+  .chart-empty{height:300px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:13px}
+
+  .bal-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .bal-col{background:rgba(13,26,31,.7);border:1px solid var(--hairline-soft);border-radius:4px;padding:11px 13px}
+  .bal-col h3{font-size:11px;color:var(--muted);font-weight:400;margin-bottom:7px;letter-spacing:.5px}
+  .bal-row{display:flex;justify-content:space-between;font-size:13px;padding:2.5px 0}
+  .bal-row .v{font-family:var(--mono)}
+  .inv-bar{position:relative;height:22px;border-radius:4px;overflow:hidden;background:var(--panel-deep);border:1px solid var(--hairline-soft);margin-top:12px}
+  .inv-cex{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,#24404a,#1a2e35);border-right:1px solid var(--gold-dim)}
+  .inv-target{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--gold);opacity:.85}
+  .inv-labels{display:flex;justify-content:space-between;margin-top:5px;font-size:12px;color:var(--muted)}
+  .bridge-row{padding:6px 0;border-bottom:1px solid rgba(30,53,60,.45)}
+  .bridge-row:last-child{border-bottom:none}
+  .bridge-row .r1{display:flex;justify-content:space-between;font-size:13px}
+  .bridge-row .r2{color:var(--faint);font-size:11px;font-family:var(--mono)}
+  #bridge-list{margin-top:10px;border-top:1px solid var(--hairline-soft)}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{color:var(--faint);font-weight:400;text-align:left;padding:4px 8px;border-bottom:1px solid var(--hairline);font-size:11px;white-space:nowrap}
+  td{padding:5px 8px;border-bottom:1px solid rgba(30,53,60,.45);vertical-align:top}
+  tbody tr:hover{background:rgba(30,53,60,.22)}
+  td.num,th.num{text-align:right}
+  .pos{color:var(--green)} .neg{color:var(--red)} .neutral{color:var(--muted)}
+  .note-cell{color:var(--muted);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .empty{color:var(--faint);font-size:13px;padding:10px 0;text-align:center}
+
+  .ck{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,53,60,.45);font-size:13px}
+  .ck:last-child{border-bottom:none}
+  .hint{color:var(--faint);font-size:12px;margin-top:9px;line-height:1.7}
+
+  .set-row{display:grid;grid-template-columns:minmax(0,1fr) 128px;gap:8px;align-items:center;padding:5px 0}
+  .set-row .desc{font-size:12.5px;min-width:0}
+  .set-row .desc small{display:block;color:var(--faint);font-size:11px;word-break:break-all}
+  .set-row .st{font-size:11px;color:var(--faint);text-align:right}
+  .set-row .st.ok{color:var(--green)}
+  .actions{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+
+  #proclog-pre{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--panel-deep);
+    border:1px solid var(--hairline-soft);border-radius:4px;padding:9px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  .logtabs{display:flex;gap:6px;margin-bottom:9px}
+
+  .modal-mask{position:fixed;inset:0;background:rgba(4,10,12,.72);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal{background:linear-gradient(180deg,var(--panel),var(--panel-deep));border:1px solid var(--hairline);
+    border-radius:8px;max-width:440px;width:90%;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .modal h3{font-size:15px;margin-bottom:9px}
+  .modal p{font-size:13px;color:var(--muted);line-height:1.75;word-break:break-all;white-space:pre-wrap}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+  #toast{position:fixed;right:18px;bottom:18px;max-width:380px;z-index:60;display:flex;flex-direction:column;gap:8px}
+  .toast-item{background:linear-gradient(180deg,var(--panel),var(--panel-deep));
+    border:1px solid var(--hairline);border-left:3px solid var(--gold);border-radius:5px;
+    padding:11px 15px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+  .toast-item.bad{border-left-color:var(--red)}
+
+  footer{max-width:1320px;margin:0 auto;padding:0 22px 40px;color:var(--faint);font-size:12px}
+  .cmd{font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--panel-deep);
+    border:1px solid var(--hairline-soft);border-radius:4px;padding:6px 9px;margin:5px 0;word-break:break-all}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="pearl"></span><b>PRL·ARB</b><span>控制台</span></div>
+  <div class="tb-sep"></div>
+  <div class="tb-item"><span class="lab">PRL</span><span class="num" id="spot">—</span></div>
+  <div class="tb-item"><span class="lab">市场信号</span><span class="chip" id="mkt">—</span></div>
+  <div class="tb-item"><span class="lab">可交易边际</span><span class="chip edge-chip num" id="edge">—</span></div>
+  <div class="tb-sep"></div>
+  <div class="tb-item"><span class="chip dry" id="mode">—</span></div>
+  <div class="tb-item"><span class="lab">心跳</span><span class="num" id="hb" style="color:var(--faint)">—</span></div>
+  <button id="halt-btn" class="danger" title="写入 .STOP，交易循环下个轮询即停">⛔ 急停</button>
+  <span class="num" id="clock"></span>
+</header>
+
+<main>
+  <div id="halt" style="display:none"></div>
+
+  <!-- 监控：实时行情 -->
+  <div class="live-strip">
+    <div class="live-cell">
+      <div class="src"><span>SafeTrade · PRL/USDT</span><span class="conn" id="cex-conn">连接中…</span></div>
+      <div class="pxs">
+        <div><div class="big num" id="cex-bid" style="color:var(--green)">—</div><div class="sub">买一 BID</div></div>
+        <div><div class="big num" id="cex-ask" style="color:var(--red)">—</div><div class="sub">卖一 ASK</div></div>
+      </div>
+      <div class="delta-1h" id="cex-1h"></div>
+      <div class="err" id="cex-err"></div>
+    </div>
+    <div class="live-cell">
+      <div class="src"><span>Uniswap V3 · WPRL/USDT</span><span class="conn" id="dex-conn">连接中…</span></div>
+      <div class="pxs">
+        <div><div class="big num" id="dex-buy" style="color:var(--red)">—</div><div class="sub">DEX 买入成本</div></div>
+        <div><div class="big num" id="dex-sell" style="color:var(--green)">—</div><div class="sub">DEX 卖出所得</div></div>
+      </div>
+      <div class="delta-1h" id="dex-1h"></div>
+      <div class="err" id="dex-err"></div>
+    </div>
+    <div class="live-cell">
+      <div class="src"><span>实时边际（$100 探针 · 含双边手续费）</span></div>
+      <div class="prem-row">
+        <div class="prem-item"><div class="lab">卖CEX·买DEX</div><div class="prem-big" id="prem-cex" style="color:var(--gold)">—</div></div>
+        <div class="prem-item"><div class="lab">卖DEX·买CEX</div><div class="prem-big" id="prem-dex" style="color:var(--sea)">—</div></div>
+      </div>
+      <div class="gauge">
+        <div class="zero"></div>
+        <div class="th" id="gauge-th" title="开枪阈值"></div>
+        <div class="mk" id="gauge-mk-cex" style="background:var(--gold)" title="卖CEX·买DEX"></div>
+        <div class="mk" id="gauge-mk-dex" style="background:var(--sea)" title="卖DEX·买CEX"></div>
+      </div>
+      <div class="gauge-lab"><span>-600bp</span><span>0</span><span>+600bp</span></div>
+      <div class="err" id="prem-err"></div>
+    </div>
+  </div>
+
+  <!-- 监控：进程 -->
+  <div class="procctl">
+    <div class="pc"><span class="dot" id="pdot-data_hub"></span><span class="nm">行情</span><span class="st" id="pst-data_hub">—</span>
+      <button data-proc="data_hub" data-act="start">启动</button>
+      <button data-proc="data_hub" data-act="restart">重启</button>
+      <button data-proc="data_hub" data-act="stop">停止</button></div>
+    <div class="pc"><span class="dot" id="pdot-auto_run"></span><span class="nm">交易</span><span class="st" id="pst-auto_run">—</span>
+      <button data-proc="auto_run" data-act="start">启动</button>
+      <button data-proc="auto_run" data-act="restart">重启</button>
+      <button data-proc="auto_run" data-act="stop">停止</button></div>
+    <div class="pc"><span class="dot" id="pdot-supply"></span><span class="nm">补币</span><span class="st" id="pst-supply">—</span>
+      <button data-proc="supply" data-act="start">启动</button>
+      <button data-proc="supply" data-act="restart">重启</button>
+      <button data-proc="supply" data-act="stop">停止</button></div>
+    <span class="hint" id="procctl-hint" style="margin:0"></span>
+  </div>
+
+  <!-- 监控主区：边际图 + 持仓 -->
+  <div class="grid-a">
+    <section class="panel">
+      <div class="chart-head">
+        <h2 style="margin:0;border:none;padding:0">双所边际 <span class="sub" id="chart-win"></span></h2>
+        <div class="legend">
+          <span><i style="background:var(--gold)"></i>CEX 溢价<b class="num" id="last-cex" style="color:var(--gold)"></b></span>
+          <span><i style="background:var(--sea)"></i>DEX 溢价<b class="num" id="last-dex" style="color:var(--sea)"></b></span>
+          <span><i style="background:var(--gold-dim);border-top:1px dashed var(--gold-dim);height:0"></i>开枪阈值</span>
+        </div>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="chart-empty" id="chart-empty" style="display:none"></div>
+    </section>
+
+    <section class="panel">
+      <h2>资金持仓 <span class="sub" id="bal-src"></span></h2>
+      <div class="bal-grid">
+        <div class="bal-col"><h3>SAFETRADE（CEX）</h3>
+          <div class="bal-row"><span>PRL</span><span class="v" id="bal-cex-prl">—</span></div>
+          <div class="bal-row"><span>USDT</span><span class="v" id="bal-cex-usdt">—</span></div>
+        </div>
+        <div class="bal-col"><h3>EVM 钱包（以太坊）</h3>
+          <div class="bal-row"><span>WPRL</span><span class="v" id="bal-evm-wprl">—</span></div>
+          <div class="bal-row"><span>USDT</span><span class="v" id="bal-evm-usdt">—</span></div>
+          <div class="bal-row"><span>ETH（gas）</span><span class="v" id="bal-evm-eth">—</span></div>
+        </div>
+      </div>
+      <div class="inv-bar"><div class="inv-cex" id="inv-cex"></div><div class="inv-target" id="inv-target"></div></div>
+      <div class="inv-labels"><span id="inv-cex-lab">币分布 CEX —</span><span id="inv-evm-lab">EVM —</span></div>
+      <div id="bridge-list"></div>
+    </section>
+  </div>
+
+  <!-- 监控次区：流水 + 检查 -->
+  <div class="grid-a">
+    <section class="panel">
+      <h2>成交流水 <span class="sub" id="trades-count"></span></h2>
+      <div id="trades-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>类型</th><th>方向</th><th class="num">数量</th><th>结果</th><th>备注</th></tr></thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+        <div class="empty" id="trades-empty" style="display:none">暂无成交 —— 台账 logs/trades.jsonl 还是空的</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>上线前检查</h2>
+      <div id="checklist"></div>
+      <p class="hint">路由身份与充值地址只在实盘补币（supply）时必需。</p>
+    </section>
+  </div>
+
+  <!-- 设置区：三等宽卡片 -->
+  <div class="grid-set">
+    <section class="panel">
+      <h2>密钥与身份 <span class="sub">保存进 .env · 不再回显</span></h2>
+      <div id="secret-rows"></div>
+      <div class="actions">
+        <button class="gold" id="save-secrets">保存密钥</button>
+        <span class="hint" id="secrets-note" style="margin:0"></span>
+      </div>
+      <p class="hint">留空 = 保持不变，填了就覆盖。保存后运行中的进程会自动重启以重读。</p>
+    </section>
+
+    <section class="panel">
+      <h2>策略参数 <span class="sub">写入 .env · 重启交易进程生效</span></h2>
+      <div id="settings-rows"></div>
+      <div class="actions">
+        <button class="gold" id="save-settings">保存参数</button>
+        <span class="hint" id="settings-note" style="margin:0"></span>
+      </div>
+      <p class="hint">DRY_RUN（干跑/实盘切换）不提供网页修改——直接编辑 .env 后重启，防止误切实盘。</p>
+    </section>
+
+    <section class="panel">
+      <h2>飞书推送 <span class="sub">群自定义机器人 webhook</span></h2>
+      <div class="set-row" style="grid-template-columns:1fr">
+        <div class="desc">Webhook 地址<small>飞书群 → 设置 → 群机器人 → 添加「自定义机器人」</small></div>
+      </div>
+      <input type="text" id="fs-url" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxxx" spellcheck="false" autocomplete="off">
+      <div class="set-row" style="grid-template-columns:1fr;margin-top:7px">
+        <div class="desc">签名密钥（可选）<small>机器人安全设置开了「签名校验」才需要</small></div>
+      </div>
+      <input type="password" id="fs-secret" placeholder="未设置则留空" spellcheck="false" autocomplete="off">
+      <div style="margin-top:9px">
+        <label class="ck-line"><input type="checkbox" id="fs-ev-halt">停机 / 熔断事件</label>
+        <label class="ck-line"><input type="checkbox" id="fs-ev-procs">进程退出</label>
+        <label class="ck-line"><input type="checkbox" id="fs-ev-trades">每笔成交</label>
+        <label class="ck-line"><input type="checkbox" id="fs-ev-heartbeat">心跳丢失（&gt;3分钟）</label>
+        <label class="ck-line"><input type="checkbox" id="fs-ev-edge">边际触发（≥阈值，10分钟节流）</label>
+      </div>
+      <div class="actions">
+        <button class="gold" id="save-feishu">保存推送设置</button>
+        <button id="test-feishu">发送测试</button>
+      </div>
+      <p class="hint" id="feishu-note"></p>
+    </section>
+  </div>
+
+  <!-- 运维区：日志 + 命令 -->
+  <div class="grid-a">
+    <section class="panel">
+      <h2>进程日志</h2>
+      <div class="logtabs">
+        <button class="gold logtab" data-log="auto_run">交易</button>
+        <button class="logtab" data-log="data_hub">行情</button>
+        <button class="logtab" data-log="supply">补币</button>
+      </div>
+      <pre id="proclog-pre">（尚未产生日志）</pre>
+      <p class="hint">只记录由看板拉起的进程输出；终端手动启动的进程请看原终端。</p>
+    </section>
+
+    <section class="panel">
+      <h2>常用命令</h2>
+      <div class="cmd">真实盈亏&nbsp;&nbsp;.venv/bin/python scripts/report.py --pnl</div>
+      <div class="cmd">人工停机&nbsp;&nbsp;touch .STOP&nbsp;&nbsp;·&nbsp;&nbsp;解除（非熔断）&nbsp;&nbsp;rm .STOP</div>
+      <p class="hint">亏损熔断（CUM_LOSS）不会从网页解除：先核对 report.py 再手动 rm .STOP。</p>
+    </section>
+  </div>
+</main>
+
+<footer>
+  控制台 —— 仅本机 127.0.0.1 可访问；POST 操作带随机令牌；密钥只写不读。实时行情线程独立于机器人（SafeTrade 公共接口 + Uniswap 公共 RPC）。
+</footer>
+
+<div class="modal-mask" id="modal" style="display:none">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <p id="modal-text"></p>
+    <div class="modal-actions">
+      <button id="modal-cancel">取消</button>
+      <button id="modal-ok" class="danger">确认执行</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const TOKEN = "__DASH_TOKEN__";
+const $ = id => document.getElementById(id);
+const fmt = (x, d=2) => (x===null||x===undefined||Number.isNaN(+x)) ? "—" : (+x).toFixed(d);
+const bps = x => (x===null||x===undefined) ? "—" : ((+x>=0?"+":"")+ (+x).toFixed(0))+"bp";
+function hhmmss(ts){
+  if(!ts) return "—";
+  const d = new Date(ts); if(isNaN(d)) return String(ts).slice(11,19);
+  return d.toTimeString().slice(0,8);
+}
+async function api(p){ return (await fetch(p)).json(); }
+async function ctl(action, extra={}){
+  const r = await fetch("/api/ctl", {method:"POST",
+    headers:{"Content-Type":"application/json","X-Dash-Token":TOKEN},
+    body: JSON.stringify({action, ...extra})});
+  return r.json();
+}
+function toast(msg, bad=false){
+  const el = document.createElement("div");
+  el.className = "toast-item"+(bad?" bad":"");
+  el.textContent = msg;
+  $("toast").appendChild(el);
+  setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity .4s"; }, 4200);
+  setTimeout(()=>el.remove(), 4800);
+}
+let modalOk = null;
+function confirmBox(title, text, onOk){
+  $("modal-title").textContent = title; $("modal-text").textContent = text;
+  $("modal").style.display = "flex"; modalOk = onOk;
+}
+$("modal-cancel").onclick = ()=>{ $("modal").style.display = "none"; modalOk = null; };
+$("modal-ok").onclick = ()=>{ $("modal").style.display = "none"; const f = modalOk; modalOk = null; if(f) f(); };
+
+setInterval(()=>{ $("clock").textContent = new Date().toTimeString().slice(0,8); }, 1000);
+
+/* ================= 总览 ================= */
+let CFG = {min_gap_bps:200, share_target_pct:40};
+let PARAM_KEYS = [], SECRET_KEYS = [], SECRET_FILLED = {};
+let firstOverview = true;
+async function loadOverview(){
+  let o; try{ o = await api("/api/overview"); }catch(e){ return; }
+  CFG = o.cfg || CFG;
+  const s = o.state || {};
+  if($("spot").textContent === "—") $("spot").textContent = s.spot!=null ? "$"+fmt(s.spot,4) : "—";
+  const m = $("mode");
+  if(o.env.dry_run){ m.className="chip dry"; m.textContent="干跑"; }
+  else{ m.className="chip live"; m.textContent="实盘"; }
+  const mk = $("mkt");
+  if(s.mkt_edge_bps!=null){
+    mk.textContent = (s.mkt_dir==="cex_prem"?"CEX贵 ":"DEX贵 ") + bps(s.mkt_edge_bps);
+    mk.className = "chip num";
+  } else { mk.textContent="—"; mk.className="chip"; }
+  const eg = $("edge");
+  if(s.edge_bps!=null && s.edge_bps > -90000){
+    eg.textContent = bps(s.edge_bps);
+    eg.className = "chip edge-chip num" + (s.edge_bps >= CFG.min_gap_bps ? " hot":"");
+  } else if(s.edge_bps!=null){ eg.textContent = "库存挡住"; eg.className="chip"; }
+  else { eg.textContent="—"; eg.className="chip edge-chip"; }
+  const hb = $("hb");
+  if(o.state_age==null){ hb.textContent="无心跳"; hb.style.color="var(--red)"; }
+  else if(o.state_age<45){ hb.textContent=o.state_age.toFixed(0)+"s"; hb.style.color="var(--green)"; }
+  else if(o.state_age<120){ hb.textContent=o.state_age.toFixed(0)+"s"; hb.style.color="var(--gold)"; }
+  else{ hb.textContent=o.state_age.toFixed(0)+"s"; hb.style.color="var(--red)"; }
+
+  const h = $("halt");
+  if(o.stop && o.stop.exists){
+    const map = {cum_loss:["亏损熔断（CUM_LOSS）——需人工核对 report.py 后 rm .STOP 恢复",""],
+                 bridge:["桥停机 —— bridge_watchdog 会在桥恢复后自动解除"," bridge"],
+                 manual:["人工停机 —— .STOP 存在，交易循环已暂停",""]};
+    const [txt,cls] = map[o.stop.kind]||map.manual;
+    h.style.display="flex";
+    h.innerHTML = `<div class="halt-banner${cls}"><b>⏸ ${txt}</b><p>${(o.stop.content||"").replace(/</g,"&lt;")}</p>`+
+      (o.stop.kind==="manual" ? `<button class="gold" id="unhalt-btn">解除停机</button>` : "")+`</div>`;
+    const ub = $("unhalt-btn");
+    if(ub) ub.onclick = ()=> confirmBox("解除停机","删除 .STOP，交易循环将在下个轮询恢复。确认恢复交易？",async()=>{
+      const r = await ctl("unhalt"); toast(r.msg||JSON.stringify(r), !r.ok);
+    });
+  } else h.style.display="none";
+
+  for(const n of ["data_hub","auto_run","supply"]){
+    const on = o.procs[n] === "running";
+    $("pdot-"+n).className = "dot" + (on ? " on":"");
+    $("pst-"+n).textContent = on ? "运行" : "停止";
+  }
+  $("procctl-hint").textContent = o.procs.supply==="stopped" && o.procs.auto_run==="running"
+    ? "supply 未运行：不会自动过桥再平衡" : "";
+
+  const items = [
+    ["SafeTrade API Key", o.env.api_key], ["API Secret", o.env.api_secret],
+    ["EVM 私钥", o.env.private_key], ["RPC 节点", o.env.rpc],
+    ["盈亏基线 baseline.json", o.baseline.set],
+    ["提币白名单 ID（补币）", o.env.routing_ids], ["充值地址（补币）", o.env.deposit_addrs],
+  ];
+  $("checklist").innerHTML = items.map(([k,v])=>
+    `<div class="ck"><span>${k}</span><span class="st ${v?"pos":"neutral"}">${v?"✓ 已配":"未配"}</span></div>`).join("")
+    + (o.env.private_key && o.env.rpc
+       ? `<div class="ck"><span>router 无限额授权</span><span class="st neutral">需跑一次 approve_router.py</span></div>` : "")
+    + (o.env.wallet_redacted ? `<p class="hint">钱包 ${o.env.wallet_redacted}</p>` : "");
+
+  const share = s.cex_token_share_pct ?? s.cex_token_share_settled_pct;
+  if(share!=null && s.tokens_total>0){
+    $("inv-cex").style.width = Math.min(100,Math.max(0,share))+"%";
+    $("inv-target").style.left = CFG.share_target_pct+"%";
+    $("inv-cex-lab").textContent = `币分布 CEX ${fmt(share,1)}%`;
+    $("inv-evm-lab").textContent = `EVM ${fmt(100-share,1)}% · 目标 ${fmt(CFG.share_target_pct,0)}/${fmt(100-CFG.share_target_pct,0)}`;
+  }
+  const deps = s.prl_deposits_inflight || [];
+  $("bridge-list").innerHTML = deps.length
+    ? `<div class="bridge-row"><div class="r1"><span>桥在途</span><span class="neutral">${deps.length} 笔</span></div></div>`+
+      deps.map(d=>`<div class="bridge-row"><div class="r1"><span class="num">${fmt(d.amount,1)} PRL</span><span class="neutral">${d.status||""}</span></div><div class="r2">${hhmmss(d.created)}</div></div>`).join("")
+    : "";
+  $("trades-count").textContent = o.counts.trades ? `台账共 ${o.counts.trades} 条` : "";
+
+  // 设置面板构建/刷新（密钥不回显值，只显示已配状态）
+  if(firstOverview && CFG.editable){
+    PARAM_KEYS = Object.keys(CFG.editable).filter(k=>!CFG.editable[k].secret);
+    SECRET_KEYS = Object.keys(CFG.editable).filter(k=>CFG.editable[k].secret);
+    $("settings-rows").innerHTML = PARAM_KEYS.map(k=>{
+      const e = CFG.editable[k];
+      return `<div class="set-row"><div class="desc">${e.desc}<small>${k}</small></div>`+
+        `<input type="text" id="set-${k}" value="${String(e.value??"").replace(/"/g,"&quot;")}" spellcheck="false"></div>`;
+    }).join("");
+    $("secret-rows").innerHTML = SECRET_KEYS.map(k=>{
+      const e = CFG.editable[k];
+      return `<div class="set-row"><div class="desc">${e.desc}<small>${k}</small><span class="st" id="st-${k}"></span></div>`+
+        `<input type="password" id="set-${k}" spellcheck="false" autocomplete="new-password"></div>`;
+    }).join("");
+    firstOverview = false;
+  }
+  if(CFG.editable){
+    for(const k of PARAM_KEYS){
+      const el = $("set-"+k);
+      if(el && document.activeElement !== el) el.value = String(CFG.editable[k].value??"");
+    }
+    for(const k of SECRET_KEYS){
+      SECRET_FILLED[k] = !!CFG.editable[k].filled;
+      const el = $("set-"+k), st = $("st-"+k);
+      if(el && document.activeElement !== el && !el.value) el.placeholder = SECRET_FILLED[k] ? "已配置 · 留空保持不变" : "未配置";
+      if(st){ st.textContent = SECRET_FILLED[k] ? "✓" : ""; st.className = "st" + (SECRET_FILLED[k] ? " ok":""); }
+    }
+  }
+}
+
+/* ================= 实时行情 ================= */
+let prevSpot = null;
+function arrow(el, v){
+  const dir = prevSpot==null || v==null ? "" : (v>prevSpot ? `<span class="arr" style="color:var(--green)">▲</span>` : v<prevSpot ? `<span class="arr" style="color:var(--red)">▼</span>` : "");
+  el.innerHTML = fmt(v,4) + dir;
+}
+function setGauge(id, v){
+  const el = $(id);
+  if(!el) return;
+  el.style.left = Math.min(100, Math.max(0, ((v ?? 0)+600)/1200*100)) + "%";
+}
+async function loadLive(){
+  let l; try{ l = await api("/api/live"); }catch(e){ return; }
+  const cex = l.cex||{}, dex = l.dex||{}, p = l.prem||{}, errs = l.errors||{};
+  arrow($("cex-bid"), cex.bid); arrow($("cex-ask"), cex.ask);
+  $("cex-conn").textContent = l.ts ? hhmmss(l.ts)+" UTC" : "连接中…";
+  $("cex-conn").style.color = errs.cex ? "var(--red)" : "var(--faint)";
+  $("cex-err").textContent = errs.cex ? "连接失败："+errs.cex : "";
+  arrow($("dex-buy"), dex.buy_px); arrow($("dex-sell"), dex.sell_px);
+  $("dex-conn").textContent = l.ts ? hhmmss(l.ts)+" UTC" : "连接中…";
+  $("dex-conn").style.color = errs.dex ? "var(--red)" : "var(--faint)";
+  $("dex-err").textContent = errs.dex ? "报价失败："+errs.dex : "";
+  if(l.spot!=null){ if($("spot").textContent==="—") $("spot").textContent = "$"+fmt(l.spot,4); prevSpot = l.spot; }
+  const pc = $("prem-cex"), pd = $("prem-dex");
+  pc.textContent = p.cex_prem_bps!=null ? bps(p.cex_prem_bps) : "—";
+  pd.textContent = p.dex_prem_bps!=null ? bps(p.dex_prem_bps) : "—";
+  pc.style.fontWeight = (p.cex_prem_bps!=null && p.cex_prem_bps>=CFG.min_gap_bps) ? "700":"400";
+  pd.style.fontWeight = (p.dex_prem_bps!=null && p.dex_prem_bps>=CFG.min_gap_bps) ? "700":"400";
+  setGauge("gauge-mk-cex", p.cex_prem_bps); setGauge("gauge-mk-dex", p.dex_prem_bps);
+  $("gauge-th").style.left = Math.min(100, ((CFG.min_gap_bps+600)/1200*100)) + "%";
+  $("prem-err").textContent = (errs.cex||errs.dex) ? "（一侧失败，边际不可用）" : "";
+
+  const bal = l.bal||{};
+  $("bal-cex-prl").textContent = bal.cex?.prl!=null ? fmt(bal.cex.prl,2)+" PRL" : "—";
+  $("bal-cex-usdt").textContent = bal.cex?.usdt!=null ? "$"+fmt(bal.cex.usdt,2) : "—";
+  $("bal-evm-wprl").textContent = bal.evm?.wprl!=null ? fmt(bal.evm.wprl,2)+" WPRL" : "—";
+  $("bal-evm-usdt").textContent = bal.evm?.usdt!=null ? "$"+fmt(bal.evm.usdt,2) : "—";
+  $("bal-evm-eth").textContent = bal.evm?.eth!=null ? fmt(bal.evm.eth,4) : "—";
+  const bits = [];
+  if(bal.cex) bits.push("CEX 实时"); else bits.push(errs.bal_cex ? "CEX 连接失败" : "未填 Key");
+  if(bal.evm) bits.push("EVM 实时"); else bits.push("未填钱包地址");
+  $("bal-src").textContent = bits.join(" · ");
+}
+
+/* 1小时涨跌幅（取自图表序列） */
+function updateDeltas(){
+  const pts = SERIES.filter(r=>r.spot!=null);
+  if(pts.length<2) return;
+  const last = pts[pts.length-1];
+  const cutoff = new Date(last.ts).getTime() - 3600e3;
+  let base = pts[0];
+  for(const r of pts){ if(new Date(r.ts).getTime() >= cutoff){ base = r; break; } }
+  const pct = (last.spot-base.spot)/base.spot*100;
+  const txt = `1h ${pct>=0?"+":""}${pct.toFixed(1)}%`;
+  const cls = pct>=0 ? "var(--green)" : "var(--red)";
+  $("cex-1h").innerHTML = `CEX ${txt}`; $("cex-1h").style.color = cls;
+  $("dex-1h").innerHTML = `DEX ${txt}`; $("dex-1h").style.color = cls;
+}
+
+/* ================= 成交流水 ================= */
+async function loadTrades(){
+  let t; try{ t = await api("/api/trades?n=60"); }catch(e){ return; }
+  const rows = t.rows || [];
+  $("trades-empty").style.display = rows.length?"none":"block";
+  $("trades-body").innerHTML = rows.map(r=>{
+    const dir = r.dir || r.kind || "—";
+    const side = r.side || (r.dir==="cex_prem"?"卖CEX·买DEX":r.dir==="dex_prem"?"卖DEX·买CEX":"");
+    const qty = r.qty!=null?r.qty:(r.exposure_qty!=null?r.exposure_qty:null);
+    const out = r.outcome!=null ? r.outcome : (r.ok===true?"完成":r.ok===false?"敞口":"—");
+    const outCls = out==="filled"||out==="flat"||out==="完成"?"pos":(out==="敞口"?"neg":"neutral");
+    return `<tr><td class="num">${hhmmss(r.ts)}</td><td>${dir}</td><td class="neutral">${side}</td>
+      <td class="num">${qty!=null?fmt(qty,2):"—"}</td><td class="${outCls}">${out}</td>
+      <td class="note-cell">${String(r.note||"").replace(/</g,"&lt;")}</td></tr>`;
+  }).join("");
+}
+
+/* ================= 边际图 ================= */
+let SERIES = [];
+async function loadSeries(){
+  let r; try{ r = await api("/api/series?n=720"); }catch(e){ return; }
+  SERIES = r.rows || [];
+  drawChart(); updateDeltas();
+  const last = SERIES[SERIES.length-1]||{};
+  $("last-cex").textContent = last.raw_cex_prem_bps!=null ? " "+bps(last.raw_cex_prem_bps) : "";
+  $("last-dex").textContent = last.raw_dex_prem_bps!=null ? " "+bps(last.raw_dex_prem_bps) : "";
+}
+function drawChart(){
+  const cv = $("chart"), empty = $("chart-empty");
+  const pts = SERIES.filter(r=>r.raw_cex_prem_bps!=null||r.raw_dex_prem_bps!=null);
+  if(pts.length<2){
+    cv.style.display="none"; empty.style.display="flex";
+    empty.textContent = SERIES.length===0 ? "尚无数据 —— 实时线程连上两边后即有曲线" : "数据点不足，等待采样…";
+    return;
+  }
+  cv.style.display="block"; empty.style.display="none";
+  const dpr = window.devicePixelRatio||1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext("2d"); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+  const padL=48, padR=10, padT=12, padB=22, iw=W-padL-padR, ih=H-padT-padB;
+  let ys=[0, CFG.min_gap_bps];
+  for(const r of pts){ if(r.raw_cex_prem_bps!=null) ys.push(r.raw_cex_prem_bps); if(r.raw_dex_prem_bps!=null) ys.push(r.raw_dex_prem_bps); }
+  let ymin=Math.min(...ys), ymax=Math.max(...ys);
+  const pad = Math.max((ymax-ymin)*0.08, 8); ymin-=pad; ymax+=pad;
+  const X = i => padL + iw*(i/(pts.length-1));
+  const Y = v => padT + ih*(1-(v-ymin)/(ymax-ymin));
+  ctx.font="10px SF Mono,Menlo,monospace"; ctx.fillStyle="#546b72";
+  for(let i=0;i<=5;i++){
+    const v=ymin+(ymax-ymin)*i/5, y=Y(v);
+    ctx.strokeStyle = Math.abs(v)<1e-9 ? "#2d4c55" : "rgba(30,53,60,.5)";
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.textAlign="right"; ctx.fillText(Math.round(v), padL-7, y+3);
+  }
+  ctx.textAlign="center";
+  for(let i=0;i<=5;i++){
+    const idx=Math.round((pts.length-1)*i/5);
+    ctx.fillText(hhmmss(pts[idx].ts).slice(0,5), X(idx), H-7);
+  }
+  const ty=Y(CFG.min_gap_bps);
+  if(CFG.min_gap_bps>ymin && CFG.min_gap_bps<ymax){
+    ctx.fillStyle="rgba(227,195,107,.06)";
+    ctx.fillRect(padL,padT,iw,Math.max(0,ty-padT));
+    ctx.strokeStyle="rgba(227,195,107,.5)"; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(padL,ty); ctx.lineTo(W-padR,ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="rgba(227,195,107,.8)"; ctx.textAlign="left";
+    ctx.fillText("+"+CFG.min_gap_bps+"bp", padL+4, ty-4);
+  }
+  const line=(key,color)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=1.6; ctx.lineJoin="round"; ctx.beginPath();
+    let pen=false;
+    pts.forEach((r,i)=>{ const v=r[key]; if(v==null){pen=false;return;}
+      const x=X(i),y=Y(v); if(!pen){ctx.moveTo(x,y);pen=true;}else ctx.lineTo(x,y); });
+    ctx.stroke();
+  };
+  line("raw_dex_prem_bps","#7fb3c8");
+  line("raw_cex_prem_bps","#e3c36b");
+}
+window.addEventListener("resize", drawChart);
+
+/* ================= 进程日志 ================= */
+let curLog = "auto_run";
+async function loadProclog(){
+  let r; try{ r = await api("/api/proclog?name="+curLog); }catch(e){ return; }
+  const lines = r.lines||[];
+  $("proclog-pre").textContent = lines.length ? lines.join("\n") : "（尚未产生日志）";
+}
+document.querySelectorAll(".logtab").forEach(b=>b.onclick=()=>{
+  curLog = b.dataset.log;
+  document.querySelectorAll(".logtab").forEach(x=>x.classList.remove("gold"));
+  b.classList.add("gold");
+  loadProclog();
+});
+
+/* ================= 控制 ================= */
+$("halt-btn").onclick = async ()=>{
+  const r = await ctl("halt");
+  toast(r.msg||"已急停", !r.ok);
+};
+document.querySelectorAll("[data-proc]").forEach(b=>b.onclick=()=>{
+  const proc = b.dataset.proc, act = b.dataset.act;
+  const doIt = async ()=>{
+    const r = await ctl(act, {proc});
+    toast(r.msg||JSON.stringify(r), !r.ok);
+    setTimeout(loadOverview, 800);
+  };
+  if(proc==="auto_run" && act==="start"){
+    confirmBox("启动交易进程","将启动 auto_run 交易主循环（按当前 .env 的 DRY_RUN 与参数运行）。确认？",doIt);
+  } else if(proc==="auto_run" && (act==="stop"||act==="restart")){
+    confirmBox(act==="stop"?"停止交易进程":"重启交易进程",
+      act==="stop"?"停止后不再扫描机会（在途单腿会保留待重启对账）。确认停止？":"重启期间短暂停止扫描，启动后自动对账在途。确认重启？",doIt);
+  } else doIt();
+});
+
+/* ================= 保存（密钥 / 参数 分开确认） ================= */
+async function doSave(changes, listText){
+  const r = await ctl("save_config", {changes});
+  if(r.refused && r.refused.length) toast("被拒绝："+r.refused.join("；"), true);
+  else toast("已保存："+r.updated.join("、"));
+  const restarts = r.restarts||[];
+  for(const p of restarts){
+    const r2 = await ctl("restart", {proc:p});
+    toast(r2.msg||`${p} 重启完成`, !r2.ok);
+  }
+  setTimeout(loadOverview, 900);
+}
+$("save-secrets").onclick = ()=>{
+  const changes = {};
+  for(const k of SECRET_KEYS){
+    const el = $("set-"+k);
+    if(el && el.value.trim()){ changes[k]=el.value.trim(); }
+  }
+  if(!Object.keys(changes).length){ toast("没有要保存的密钥改动"); return; }
+  const list = Object.keys(changes).map(k=>
+    `${k} = ●●●（${SECRET_FILLED[k]?"覆盖":"新配"}）`).join("\n");
+  confirmBox("保存密钥到 .env", "将写入：\n"+list+
+    "\n\n写入后密钥不再回显；运行中的进程将自动重启以加载。", async ()=>{
+      await doSave(changes, list);
+      for(const k of SECRET_KEYS){ const el = $("set-"+k); if(el) el.value=""; }
+    });
+};
+$("save-settings").onclick = ()=>{
+  const changes = {};
+  for(const k of PARAM_KEYS){
+    const el = $("set-"+k);
+    if(el && el.value.trim() !== String(CFG.editable[k].value??"").trim()) changes[k]=el.value.trim();
+  }
+  if(!Object.keys(changes).length){ toast("没有参数改动"); return; }
+  const list = Object.entries(changes).map(([k,v])=>`${k} = ${v}`).join("\n");
+  confirmBox("保存参数到 .env", "以下改动将写入 .env：\n"+list+
+    "\n\n交易进程运行中时会自动重启使其生效。", async ()=>{ await doSave(changes, list); });
+};
+
+/* ================= 飞书 ================= */
+async function loadFeishu(){
+  let f; try{ f = await api("/api/feishu"); }catch(e){ return; }
+  if(document.activeElement !== $("fs-url")) $("fs-url").value = f.url||"";
+  const sec = $("fs-secret");
+  if(document.activeElement !== sec) sec.value = "", sec.placeholder = f.secret_set ? "已设置 · 留空保持不变" : "未设置则留空";
+  const ev = f.events||{};
+  $("fs-ev-halt").checked = !!ev.halt; $("fs-ev-procs").checked = !!ev.procs;
+  $("fs-ev-trades").checked = !!ev.trades; $("fs-ev-heartbeat").checked = !!ev.heartbeat;
+  $("fs-ev-edge").checked = !!ev.edge;
+  $("feishu-note").textContent = f.url ? "" : "未配置——只写本地日志，不推送。";
+}
+$("save-feishu").onclick = async ()=>{
+  const secret = $("fs-secret").value.trim();
+  const r = await ctl("set_feishu", {
+    url: $("fs-url").value.trim(), secret: secret,
+    events: {halt:$("fs-ev-halt").checked, procs:$("fs-ev-procs").checked,
+             trades:$("fs-ev-trades").checked, heartbeat:$("fs-ev-heartbeat").checked,
+             edge:$("fs-ev-edge").checked}});
+  toast(r.msg||"已保存", !r.ok);
+  $("fs-secret").value=""; loadFeishu();
+};
+$("test-feishu").onclick = async ()=>{
+  const r = await ctl("test_feishu");
+  toast(r.ok ? "测试消息已发送，去飞书群看看" : (r.msg||r.err||"发送失败"), !r.ok);
+};
+
+/* ================= 启动 ================= */
+loadOverview(); loadLive(); loadSeries(); loadTrades(); loadProclog(); loadFeishu();
+setInterval(loadOverview, 2000);
+setInterval(loadLive, 3000);
+setInterval(loadTrades, 6000);
+setInterval(loadSeries, 15000);
+setInterval(loadProclog, 5000);
+setInterval(loadFeishu, 30000);
+$("chart-win").textContent = "最近约 3 小时（bot 时序缺失时用实时线程数据）";
+</script>
+</body>
+</html>
